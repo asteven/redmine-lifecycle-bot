@@ -88,8 +88,8 @@ def main(ctx, verbose, debug, log_level, dry_run,
     stale_threshold = date_ref - relativedelta(days=stale_after)
     inactivity_threshold = date_ref - relativedelta(days=reconcile_after)
 
-    #redmine = redminelib.Redmine(url, key=api_key, requests={'verify': False},
     try:
+        #redmine = redminelib.Redmine(url, key=api_key, requests={'verify': False},
         redmine = redminelib.Redmine(url, key=api_key, datetime_format='%Y-%m-%dT%H:%M:%S')
         user = redmine.user.get('current', include=['memberships'])
         project_ids = [membership['project']['id'] for membership in user.memberships.values()]
@@ -139,7 +139,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
 
         log.debug(f'query: {query}')
 
-        # For every issue that  projects we are a member of.
+        # For every issue old issue that is not frozen.
         try:
             for issue in redmine.issue.filter(**query):
                 lifecycle = issue.custom_fields.get(lifecycle_field_id)
