@@ -1,0 +1,192 @@
+#!/usr/bin/env python
+
+import logging
+import sys
+
+from enum import Enum
+from datetime import date
+from datetime import datetime
+
+import click
+
+import redminelib
+
+from dateutil.relativedelta import relativedelta
+
+
+
+class Lifecycle(str, Enum):
+    #active = 'active'
+    stale = 'stale'
+    rotten = 'rotten'
+    frozen = 'frozen'
+
+
+class LifecycleNotes(str, Enum):
+    stale = '''Issues go stale after 90d of inactivity.
+Mark the issue as fresh by clearing the 'lifecycle' field.
+Stale issues rot after an additional 30d of inactivity and eventually close.
+
+If this issue is safe to close please do so now.
+'''
+
+    rotten = '''Stale issues rot after 30d of inactivity.
+Mark the issue as fresh by clearing the 'lifecycle' field.
+Rotten issues close after an additional 30d of inactivity.
+
+If this issue is safe to close please do so now.
+'''
+
+    close = '''
+Rotten issues close after 30d of inactivity.
+Reopen the issue if needed.
+Mark the issue as fresh by clearing the 'lifecycle' field.
+'''
+
+
+
+@click.command(name='redmine-lifecycle-bot')
+@click.option('--verbose', '-v', is_flag=True, help='be more verbose')
+@click.option('--debug', '-d', is_flag=True, help='be even more verbose')
+@click.option('--log-level', 'log_level', help='set log level')
+@click.option('--dry-run', '-n', is_flag=True, help='only log changes instead of applying the')
+@click.option('--url', required=True, help='url of the redmine API', envvar='REDMINE_URL')
+@click.option('--api-key', required=True, help='remine api key', envvar='REDMINE_API_KEY')
+@click.option('--lifecycle-field-id', type=int, required=True, envvar='LIFECYCLE_FIELD_ID',
+    help='the redmine custom field id used for storing lifecycle state')
+@click.option('--stale-after', type=int, default=90, envvar='STALE_AFTER',
+    help='after how many days of inactivity issues go stale')
+@click.option('--reconsile-after', type=int, default=30, envvar='RECONSILE_AFTER',
+    help='after how many days of inactivity lifecycle state is reconciled')
+@click.option('--dev-mode', is_flag=True, help='run in dev mode')
+@click.pass_context
+def main(ctx, verbose, debug, log_level, dry_run,
+        url, api_key, lifecycle_field_id,
+        stale_after, reconsile_after, dev_mode):
+    """Redmine issue lifecycle bot based on ideas from fejta-bot.
+    """
+
+    # configure logger
+    logging.basicConfig(level=logging.ERROR, format='%(asctime)s %(levelname)s: %(message)s', stream=sys.stderr)
+    log = logging.getLogger(ctx.info_name)
+    if not log_level:
+        if verbose:
+            log_level = 'info'
+        elif debug:
+            log_level = 'debug'
+            # Warning: uncommenting this will leak the api key in the logs!
+            ## set debug log level on root logger instance -> valid for ALL loggers
+            #logging.getLogger().setLevel(getattr(logging, log_level.upper()))
+
+    if log_level:
+        log.setLevel(getattr(logging, log_level.upper()))
+
+    # Warning: uncommenting this will leak the api key in the logs!
+    #log.debug('ctx.args: {0}'.format(ctx.args))
+    #log.debug('ctx.params: {0}'.format(ctx.params))
+
+    date_ref = date.today()
+    stale_threshold = date_ref - relativedelta(days=stale_after)
+    inactivity_threshold = date_ref - relativedelta(days=reconsile_after)
+
+    #redmine = redminelib.Redmine(url, key=api_key, requests={'verify': False},
+    try:
+        redmine = redminelib.Redmine(url, key=api_key, datetime_format='%Y-%m-%dT%H:%M:%S')
+        user = redmine.user.get('current', include=['memberships'])
+        project_ids = [membership['project']['id'] for membership in user.memberships.values()]
+        log.debug(f'user: {user!r}')
+        log.debug(f'project_ids: {project_ids}')
+    except redminelib.exceptions.AuthError as e:
+        ctx.fail('Failed to authenticate to redmine with the given API key.')
+
+    try:
+        lifecycle_field = redmine.custom_field.get(lifecycle_field_id)
+        log.debug(f'lifecycle_field: {lifecycle_field!r}')
+    except redminelib.exceptions.ResourceNotFoundError as e:
+        ctx.fail(f'The given lifecycle field id does not exist in redmine: {lifecycle_field_id}')
+
+
+    # Ensure the 'lifecycle' custom field is enabled for the projects we are responsible for.
+    for project_id in project_ids:
+        try:
+            project = redmine.project.get(project_id, include=['issue_custom_fields'])
+            log.debug(f'project: {project!r}')
+        except redminelib.exceptions.ResourceNotFoundError as e:
+            log.warning(f'The redmine project id does not exist: {project_id}')
+            continue
+
+        try:
+            lifecycle_field_enabled = len([f for f in project.issue_custom_fields if f['id'] == lifecycle_field.id])
+            if not lifecycle_field_enabled:
+                log.info(f'enable lifecycle field on: {project!r}')
+                if not dry_run:
+                    redmine.project.update(project_id, issue_custom_field_ids=[lifecycle_field.id])
+        except redminelib.exceptions.ResourceNotFoundError as e:
+            log.warning(f'Failed to enable the lifecycle custom field ({lifecycle_field_id}) for project: {project_id}')
+            continue
+
+    # For all projects we are a member of.
+    for project_id in project_ids:
+        # Note: The redmine api by default only returns open issue,
+        #       so do not have to filter on that ourself.
+        query = {
+           'project_id': project_id,
+            f'cf_{lifecycle_field_id}': f'!{Lifecycle.frozen}',
+            'updated_on': f'<={inactivity_threshold}',
+        }
+        if dev_mode:
+            query['created_on'] = query['updated_on']
+            del query['updated_on']
+
+        log.debug(f'query: {query}')
+
+        # For every issue that  projects we are a member of.
+        try:
+            for issue in redmine.issue.filter(**query):
+                lifecycle = issue.custom_fields.get(lifecycle_field_id)
+                if not lifecycle:
+                    log.warning(f'lifecycle field missing on: {issue!r}')
+                    continue
+                current_lifecycle = lifecycle.value
+                updates = {}
+                if current_lifecycle == Lifecycle.rotten:
+                    # Issue has been rotten for more then 30 days.
+                    # Close it.
+                    log.info(f'close: {issue!r}')
+                    updates['status_id'] = 5
+                    updates['notes'] = LifecycleNotes.close
+                else:
+                    if current_lifecycle == Lifecycle.stale:
+                        # Issue has been stale for more then 30 days.
+                        # Mark it as rotten.
+                        lifecycle.value = Lifecycle.rotten
+                        log.info(f'mark {lifecycle.value}: {issue!r}')
+                        updates['custom_fields'] = [dict(lifecycle)]
+                        updates['notes'] = LifecycleNotes.rotten
+                    else:
+                        if dev_mode:
+                            updated_on_datetime = datetime.strptime(issue.created_on, '%Y-%m-%dT%H:%M:%SZ')
+                        else:
+                            updated_on_datetime = datetime.strptime(issue.updated_on, '%Y-%m-%dT%H:%M:%SZ')
+                        if updated_on_datetime.date() <= stale_threshold:
+                            # Issue has not been updated since more then 90 days.
+                            # Mark it as stale.
+                            lifecycle.value = Lifecycle.stale
+                            log.info(f'mark {lifecycle.value}: {issue!r}')
+                            updates['custom_fields'] = [dict(lifecycle)]
+                            updates['notes'] = LifecycleNotes.stale
+
+                log.debug(f'{issue!r} updates: {updates}')
+                if updates and not dry_run:
+                    try:
+                        redmine.issue.update(issue.id, **updates)
+                    except redminelib.exceptions.BaseRedmineError as e:
+                        log.exception(f'Failed to update issue: {issue.id}')
+                        continue
+        except Exception as e:
+            log.exception(str(e))
+            ctx.fail('Unknown error.')
+
+
+if __name__ == '__main__':
+    main()
