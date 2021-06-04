@@ -37,8 +37,7 @@ Rotten issues close after an additional 30d of inactivity.
 If this issue is safe to close please do so now.
 '''
 
-    close = '''
-Rotten issues close after 30d of inactivity.
+    close = '''Rotten issues close after 30d of inactivity.
 Reopen the issue if needed.
 Mark the issue as fresh by clearing the 'lifecycle' field.
 '''
