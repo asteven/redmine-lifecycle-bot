@@ -48,7 +48,7 @@ Mark the issue as fresh by clearing the 'lifecycle' field.
 @click.option('--verbose', '-v', is_flag=True, help='be more verbose')
 @click.option('--debug', '-d', is_flag=True, help='be even more verbose')
 @click.option('--log-level', 'log_level', help='set log level')
-@click.option('--dry-run', '-n', is_flag=True, help='only log changes instead of applying the')
+@click.option('--dry-run', '-n', is_flag=True, help='only log changes instead of applying them')
 @click.option('--url', required=True, help='url of the redmine API', envvar='REDMINE_URL')
 @click.option('--api-key', required=True, help='remine api key', envvar='REDMINE_API_KEY')
 @click.option('--lifecycle-field-id', type=int, required=True, envvar='LIFECYCLE_FIELD_ID',
