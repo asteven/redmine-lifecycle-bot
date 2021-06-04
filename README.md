@@ -10,11 +10,12 @@ It's inspired by the kubernetes fetja-bot.
 
 Create a custom field in redmine with the following properties:
 
+```
 Format: List
 Name: Lifecycle (or whatever you like)
 Possible values: '', 'stale', 'rotten', 'frozen'
 Used as a filter: True
-
+```
 
 ### API key with admin privileges
 
