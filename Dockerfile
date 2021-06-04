@@ -2,7 +2,7 @@
 
 FROM docker.io/python:3.8-slim AS compile-image
 
-LABEL maintainer "Steven Armstrong <steven.armstrong@id.ethz.ch>"
+LABEL maintainer "Steven Armstrong <steven@armstrong.cc>"
 
 RUN apt-get update
 RUN apt-get install -y --no-install-recommends build-essential gcc
@@ -21,12 +21,11 @@ RUN pip install dumb-init
 
 FROM docker.io/python:3.8-slim AS runtime-image
 
+COPY --from=compile-image /venv /venv
+
 # Install runtime dependencies.
 COPY redmine-lifecycle-bot /venv/bin
 RUN chmod +x /venv/bin/redmine-lifecycle-bot
-
-COPY --from=compile-image /venv /venv
-
 
 RUN useradd redmine-bot
 USER redmine-bot
