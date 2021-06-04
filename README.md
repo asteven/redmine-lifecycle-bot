@@ -68,4 +68,14 @@ redmine-lifecycle-bot \
   --dry-run
 ```
 
+Or as a docker container:
 
+```
+podman run -ti --rm \
+   -e "REDMINE_URL=https://redmine.example.com" \
+   -e "REDMINE_API_KEY=your-api-key" \
+   -e "LIFECYCLE_FIELD_ID=42" \
+   docker.io/asteven/redmine-lifecycle-bot \
+      --verbose \
+      --dry-run
+```
