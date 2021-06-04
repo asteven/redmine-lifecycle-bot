@@ -56,4 +56,16 @@ redmine-lifecycle-bot \
   --lifecycle-field-id 42
 ```
 
+Or alternatively:
+
+```
+export REDMINE_URL='https://redmine.example.com'
+export REDMINE_API_KEY='your-api-key'
+export LIFECYCLE_FIELD_ID=42
+
+redmine-lifecycle-bot \
+  --verbose \
+  --dry-run
+```
+
 
