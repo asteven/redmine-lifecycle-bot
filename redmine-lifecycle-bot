@@ -55,13 +55,13 @@ Mark the issue as fresh by clearing the 'lifecycle' field.
     help='the redmine custom field id used for storing lifecycle state')
 @click.option('--stale-after', type=int, default=90, envvar='STALE_AFTER',
     help='after how many days of inactivity issues go stale')
-@click.option('--reconsile-after', type=int, default=30, envvar='RECONSILE_AFTER',
+@click.option('--reconcile-after', type=int, default=30, envvar='RECONCILE_AFTER',
     help='after how many days of inactivity lifecycle state is reconciled')
 @click.option('--dev-mode', is_flag=True, help='run in dev mode')
 @click.pass_context
 def main(ctx, verbose, debug, log_level, dry_run,
         url, api_key, lifecycle_field_id,
-        stale_after, reconsile_after, dev_mode):
+        stale_after, reconcile_after, dev_mode):
     """Redmine issue lifecycle bot based on ideas from fejta-bot.
     """
 
@@ -86,7 +86,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
 
     date_ref = date.today()
     stale_threshold = date_ref - relativedelta(days=stale_after)
-    inactivity_threshold = date_ref - relativedelta(days=reconsile_after)
+    inactivity_threshold = date_ref - relativedelta(days=reconcile_after)
 
     #redmine = redminelib.Redmine(url, key=api_key, requests={'verify': False},
     try:
