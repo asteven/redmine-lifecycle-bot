@@ -4,13 +4,11 @@ This script implements issue lifecycle management for redmine.
 It's inspired by the kubernetes fetja-bot.
 
 The bot is enabled on a per project basis by adding it's api-key owner
-as a member.
-
-It is recommended to use a dedicated user and api-key.
+as a member. It is recommended to use a dedicated user and api-key.
 
 The bot can then be run once per day from a cronjob.
 
-It then takes redmine issues in that project through a lifecycle like the following:
+It takes redmine issues in that project through the following lifecycle:
 
 - after 90 days of inactivity: mark as stale
 - after another 30 days of inactivity:
