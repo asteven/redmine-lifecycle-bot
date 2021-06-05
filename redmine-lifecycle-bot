@@ -24,14 +24,14 @@ class Lifecycle(str, Enum):
 
 class LifecycleNotes(str, Enum):
     stale = '''Issues go stale after 90d of inactivity.
-Mark the issue as fresh by clearing the 'lifecycle' field.
+Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 Stale issues rot after an additional 30d of inactivity and eventually close.
 
 If this issue is safe to close please do so now.
 '''
 
     rotten = '''Stale issues rot after 30d of inactivity.
-Mark the issue as fresh by clearing the 'lifecycle' field.
+Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 Rotten issues close after an additional 30d of inactivity.
 
 If this issue is safe to close please do so now.
@@ -39,7 +39,7 @@ If this issue is safe to close please do so now.
 
     close = '''Rotten issues close after 30d of inactivity.
 Reopen the issue if needed.
-Mark the issue as fresh by clearing the 'lifecycle' field.
+Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 '''
 
 
@@ -153,7 +153,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                     # Close it.
                     log.info(f'close: {issue!r}')
                     updates['status_id'] = 5
-                    updates['notes'] = LifecycleNotes.close
+                    updates['notes'] = LifecycleNotes.close.format(lifecycle_field_name=lifecycle_field.name)
                 else:
                     if current_lifecycle == Lifecycle.stale:
                         # Issue has been stale for more then 30 days.
@@ -161,7 +161,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                         lifecycle.value = Lifecycle.rotten
                         log.info(f'mark {lifecycle.value}: {issue!r}')
                         updates['custom_fields'] = [dict(lifecycle)]
-                        updates['notes'] = LifecycleNotes.rotten
+                        updates['notes'] = LifecycleNotes.rotten.format(lifecycle_field_name=lifecycle_field.name)
                     else:
                         if dev_mode:
                             updated_on_datetime = datetime.strptime(issue.created_on, '%Y-%m-%dT%H:%M:%SZ')
@@ -173,7 +173,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                             lifecycle.value = Lifecycle.stale
                             log.info(f'mark {lifecycle.value}: {issue!r}')
                             updates['custom_fields'] = [dict(lifecycle)]
-                            updates['notes'] = LifecycleNotes.stale
+                            updates['notes'] = LifecycleNotes.stale.format(lifecycle_field_name=lifecycle_field.name)
 
                 log.debug(f'{issue!r} updates: {updates}')
                 if updates and not dry_run:
