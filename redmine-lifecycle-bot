@@ -57,11 +57,12 @@ Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
     help='after how many days of inactivity issues go stale')
 @click.option('--reconcile-after', type=int, default=30, envvar='RECONCILE_AFTER',
     help='after how many days of inactivity lifecycle state is reconciled')
-@click.option('--dev-mode', is_flag=True, help='run in dev mode')
+@click.option('--issue-id', type=int, required=True, help='only run on the given specific issue')
+@click.option('--force', is_flag=True, help='process issues independent of inactivity')
 @click.pass_context
 def main(ctx, verbose, debug, log_level, dry_run,
         url, api_key, lifecycle_field_id,
-        stale_after, reconcile_after, dev_mode):
+        stale_after, reconcile_after, issue_id, force):
     """Redmine issue lifecycle bot based on ideas from fejta-bot.
     """
 
@@ -83,6 +84,10 @@ def main(ctx, verbose, debug, log_level, dry_run,
     # Warning: uncommenting this will leak the api key in the logs!
     #log.debug('ctx.args: {0}'.format(ctx.args))
     #log.debug('ctx.params: {0}'.format(ctx.params))
+
+    if force:
+        stale_after = 0
+        reconcile_after = 0
 
     date_ref = date.today()
     stale_threshold = date_ref - relativedelta(days=stale_after)
@@ -133,13 +138,12 @@ def main(ctx, verbose, debug, log_level, dry_run,
             f'cf_{lifecycle_field_id}': f'!{Lifecycle.frozen}',
             'updated_on': f'<={inactivity_threshold}',
         }
-        if dev_mode:
-            query['created_on'] = query['updated_on']
-            del query['updated_on']
+        if issue_id:
+            query['issue_id'] = issue_id
 
         log.debug(f'query: {query}')
 
-        # For every issue old issue that is not frozen.
+        # For every queried issue that is not frozen.
         try:
             for issue in redmine.issue.filter(**query):
                 lifecycle = issue.custom_fields.get(lifecycle_field_id)
@@ -163,10 +167,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                         updates['custom_fields'] = [dict(lifecycle)]
                         updates['notes'] = LifecycleNotes.rotten.format(lifecycle_field_name=lifecycle_field.name)
                     else:
-                        if dev_mode:
-                            updated_on_datetime = datetime.strptime(issue.created_on, '%Y-%m-%dT%H:%M:%SZ')
-                        else:
-                            updated_on_datetime = datetime.strptime(issue.updated_on, '%Y-%m-%dT%H:%M:%SZ')
+                        updated_on_datetime = datetime.strptime(issue.updated_on, '%Y-%m-%dT%H:%M:%SZ')
                         if updated_on_datetime.date() <= stale_threshold:
                             # Issue has not been updated since more then 90 days.
                             # Mark it as stale.
