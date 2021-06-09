@@ -16,7 +16,10 @@ It takes redmine issues in that project through the following lifecycle:
    - if marked as rotten, close
 
 
-![Screenshot showing what this looks like in redmine.](docs/screenshot.png)
+This is a screenshot showing what this looks like in redmine. Note that the updates would
+normaly be done after 90/30/30 days of inactivity.
+
+![Screenshot](docs/screenshot.png)
 
 
 ## Requirements
