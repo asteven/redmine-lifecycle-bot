@@ -16,6 +16,9 @@ It takes redmine issues in that project through the following lifecycle:
    - if marked as rotten, close
 
 
+![Screenshot showing what this looks like in redmine.](docs/screenshot.png)
+
+
 ## Requirements
 
 ### Custom field
@@ -77,3 +80,6 @@ podman run -ti --rm \
       --verbose \
       --dry-run
 ```
+
+
+
