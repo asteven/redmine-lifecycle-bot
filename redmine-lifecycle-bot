@@ -14,6 +14,9 @@ import redminelib
 from dateutil.relativedelta import relativedelta
 
 
+# The id of redmines 'closed' status.
+STATUS_CLOSED = 5
+
 
 class Lifecycle(str, Enum):
     #active = 'active'
@@ -156,7 +159,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                     # Issue has been rotten for more then 30 days.
                     # Close it.
                     log.info(f'close: {issue!r}')
-                    updates['status_id'] = 5
+                    updates['status_id'] = STATUS_CLOSED
                     updates['notes'] = LifecycleNotes.close.format(lifecycle_field_name=lifecycle_field.name)
                 else:
                     if current_lifecycle == Lifecycle.stale:
