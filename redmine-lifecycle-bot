@@ -107,7 +107,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
         lifecycle_field = redmine.custom_field.get(lifecycle_field_id)
         log.debug(f'lifecycle_field: {lifecycle_field!r}')
     except redminelib.exceptions.ResourceNotFoundError as e:
-        ctx.fail(f'The given lifecycle field id does not exist in redmine: {lifecycle_field_id}')
+        ctx.fail(f'Failed to get the lifecycle field for the given field id: {lifecycle_field_id}')
 
 
     # Ensure the 'lifecycle' custom field is enabled for the projects we are responsible for.
