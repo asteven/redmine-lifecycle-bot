@@ -60,7 +60,7 @@ Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
     help='after how many days of inactivity issues go stale')
 @click.option('--reconcile-after', type=int, default=30, envvar='RECONCILE_AFTER',
     help='after how many days of inactivity lifecycle state is reconciled')
-@click.option('--issue-id', type=int, required=True, help='only run on the given specific issue')
+@click.option('--issue-id', type=int, help='only run on the given specific issue')
 @click.option('--force', is_flag=True, help='process issues independent of inactivity')
 @click.pass_context
 def main(ctx, verbose, debug, log_level, dry_run,
