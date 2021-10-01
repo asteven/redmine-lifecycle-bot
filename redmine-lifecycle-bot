@@ -129,6 +129,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                 log.info(f'enable lifecycle field on: {project!r}')
                 if not dry_run or enable_lifecycle_field:
                     issue_custom_field_ids.append(lifecycle_field.id)
+                    log.debug(f'setting custom_fields for project {project_id} to {issue_custom_field_ids}')
                     redmine.project.update(project_id, issue_custom_field_ids=issue_custom_field_ids)
         except redminelib.exceptions.ResourceNotFoundError as e:
             log.warning(f'Failed to enable the lifecycle custom field ({lifecycle_field_id}) for project: {project_id}')
