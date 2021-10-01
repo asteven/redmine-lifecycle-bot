@@ -154,7 +154,12 @@ def main(ctx, verbose, debug, log_level, dry_run,
                 if not lifecycle:
                     log.warning(f'lifecycle field missing on: {issue!r}')
                     continue
-                current_lifecycle = lifecycle.value
+                try:
+                    current_lifecycle = lifecycle.value
+                except redminelib.exceptions.ResourceAttrError as e:
+                    # The issue has not been saved since the lifecycle field
+                    # was enabled on the project.
+                    current_lifecycle = ''
                 updates = {}
                 if current_lifecycle == Lifecycle.rotten:
                     # Issue has been rotten for more then 30 days.
