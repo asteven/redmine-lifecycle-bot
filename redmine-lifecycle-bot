@@ -14,9 +14,6 @@ import redminelib
 from dateutil.relativedelta import relativedelta
 
 
-# The id of redmines 'closed' status.
-STATUS_CLOSED = 5
-
 
 class Lifecycle(str, Enum):
     #active = 'active'
@@ -57,6 +54,8 @@ Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 @click.option('--lifecycle-field-id', type=int, required=True, envvar='LIFECYCLE_FIELD_ID',
     help='the redmine custom field id used for storing lifecycle state')
 @click.option('--enable-lifecycle-field', is_flag=True, help='enable the lifecycle field on all managemend projects, even in dry-run mode.')
+@click.option('--rotten-status-id', type=int, default=5, envvar='ROTTEN_STATUS_ID',
+    help='the redmine status ID to use when closing rotten issues. Defaults to: 5')
 @click.option('--stale-after', type=int, default=90, envvar='STALE_AFTER',
     help='after how many days of inactivity issues go stale')
 @click.option('--reconcile-after', type=int, default=30, envvar='RECONCILE_AFTER',
@@ -66,6 +65,7 @@ Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 @click.pass_context
 def main(ctx, verbose, debug, log_level, dry_run,
         url, api_key, lifecycle_field_id, enable_lifecycle_field,
+        rotten_status_id,
         stale_after, reconcile_after, issue_id, force):
     """Redmine issue lifecycle bot based on ideas from fejta-bot.
     """
@@ -101,7 +101,9 @@ def main(ctx, verbose, debug, log_level, dry_run,
         #redmine = redminelib.Redmine(url, key=api_key, requests={'verify': False},
         redmine = redminelib.Redmine(url, key=api_key, datetime_format='%Y-%m-%dT%H:%M:%S')
         user = redmine.user.get('current', include=['memberships'])
-        project_ids = [membership['project']['id'] for membership in user.memberships.values()]
+        open_project_ids = [project['id'] for project in redmine.project.all()]
+        member_project_ids = [membership['project']['id'] for membership in user.memberships.values()]
+        project_ids = list(set(member_project_ids).intersection(set(open_project_ids)))
         log.debug(f'user: {user!r}')
         log.debug(f'project_ids: {project_ids}')
     except redminelib.exceptions.AuthError as e:
@@ -167,7 +169,7 @@ def main(ctx, verbose, debug, log_level, dry_run,
                     # Issue has been rotten for more then 30 days.
                     # Close it.
                     log.info(f'close: {issue!r}')
-                    updates['status_id'] = STATUS_CLOSED
+                    updates['status_id'] = rotten_status_id
                     updates['notes'] = LifecycleNotes.close.format(lifecycle_field_name=lifecycle_field.name)
                 else:
                     if current_lifecycle == Lifecycle.stale:
@@ -187,7 +189,8 @@ def main(ctx, verbose, debug, log_level, dry_run,
                             updates['custom_fields'] = [dict(lifecycle)]
                             updates['notes'] = LifecycleNotes.stale.format(lifecycle_field_name=lifecycle_field.name)
 
-                log.debug(f'{issue!r} updates: {updates}')
+                if updates:
+                    log.debug(f'{issue!r} updates: {updates}')
                 if updates and not dry_run:
                     try:
                         redmine.issue.update(issue.id, **updates)
