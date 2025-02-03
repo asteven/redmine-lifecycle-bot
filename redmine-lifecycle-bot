@@ -175,18 +175,18 @@ def main(ctx, verbose, debug, log_level, dry_run,
                     if current_lifecycle == Lifecycle.stale:
                         # Issue has been stale for more then 30 days.
                         # Mark it as rotten.
-                        lifecycle.value = Lifecycle.rotten
+                        lifecycle.value = Lifecycle.rotten.value
                         log.info(f'mark {lifecycle.value}: {issue!r}')
-                        updates['custom_fields'] = [dict(lifecycle)]
+                        updates['custom_fields'] = [{'id': lifecycle.id, 'value': lifecycle.value}]
                         updates['notes'] = LifecycleNotes.rotten.format(lifecycle_field_name=lifecycle_field.name)
                     else:
                         updated_on_datetime = datetime.strptime(issue.updated_on, '%Y-%m-%dT%H:%M:%SZ')
                         if updated_on_datetime.date() <= stale_threshold:
                             # Issue has not been updated since more then 90 days.
                             # Mark it as stale.
-                            lifecycle.value = Lifecycle.stale
+                            lifecycle.value = Lifecycle.stale.value
                             log.info(f'mark {lifecycle.value}: {issue!r}')
-                            updates['custom_fields'] = [dict(lifecycle)]
+                            updates['custom_fields'] = [{'id': lifecycle.id, 'value': lifecycle.value}]
                             updates['notes'] = LifecycleNotes.stale.format(lifecycle_field_name=lifecycle_field.name)
 
                 if updates:
