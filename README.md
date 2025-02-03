@@ -40,6 +40,11 @@ Used as a filter: True
 You need the API key of a user that has admin privileges.
 
 
+### ID of a redmine 'Status'
+
+The numeric ID of a redmine status field which has the 'Issue closed' flag.
+When issues are rotten this status is used to close them.
+This defaults to '5' which is redmine's default 'Closed' status.
 
 ## Usage
 
@@ -57,7 +62,8 @@ redmine-lifecycle-bot \
   --dry-run \
   --url https://redmine.example.com \
   --api-key your-api-key \
-  --lifecycle-field-id 42
+  --lifecycle-field-id 42 \
+  --rotten-status-id 5
 ```
 
 Or alternatively:
@@ -66,6 +72,7 @@ Or alternatively:
 export REDMINE_URL='https://redmine.example.com'
 export REDMINE_API_KEY='your-api-key'
 export LIFECYCLE_FIELD_ID=42
+export ROTTEN_STATUS_ID=5
 
 redmine-lifecycle-bot \
   --verbose \
@@ -79,10 +86,9 @@ podman run -ti --rm \
    -e "REDMINE_URL=https://redmine.example.com" \
    -e "REDMINE_API_KEY=your-api-key" \
    -e "LIFECYCLE_FIELD_ID=42" \
+   -e "ROTTEN_STATUS_ID=42" \
    docker.io/asteven/redmine-lifecycle-bot \
       --verbose \
       --dry-run
 ```
-
-
 
