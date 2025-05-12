@@ -43,7 +43,6 @@ Mark the issue as fresh by clearing the '{lifecycle_field_name}' field.
 '''
 
 
-
 @click.command(name='redmine-lifecycle-bot')
 @click.option('--verbose', '-v', is_flag=True, help='be more verbose')
 @click.option('--debug', '-d', is_flag=True, help='be even more verbose')
@@ -154,6 +153,20 @@ def main(ctx, verbose, debug, log_level, dry_run,
         # For every queried issue that is not frozen.
         try:
             for issue in redmine.issue.filter(**query):
+                if issue.start_date and issue.start_date > date_ref:
+                    # ignore issue with start_date in the future
+                    continue
+                if issue.due_date and issue.due_date > date_ref:
+                    # ignore issue with due_date in the future
+                    continue
+                try:
+                    issue_version = redmine.version.get(issue.fixed_version.id)
+                    if issue_version.due_date and issue_version.due_date > date_ref:
+                        # ignore issues who's version has a due_date in the future
+                        continue
+                except redminelib.exceptions.ResourceAttrError:
+                    pass
+
                 lifecycle = issue.custom_fields.get(lifecycle_field_id)
                 if not lifecycle:
                     log.warning(f'lifecycle field missing on: {issue!r}')
